@@ -1,0 +1,56 @@
+module radix_4_mul (
+    input  wire        clk,
+    input  wire        rst,
+    input  wire [31:0] a,
+    input  wire [31:0] b,
+    input  wire        start,
+    output reg  [63:0] result,
+    output reg         done
+);
+
+    reg [63:0] a_reg;
+    reg [31:0] b_reg;
+    reg [63:0] sum_reg;
+    reg [4:0]  count;
+    reg busy;
+
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            a_reg   <= 64'b0;
+            b_reg   <= 32'b0;
+            sum_reg <= 64'b0;
+            count   <= 5'b0;
+            busy    <= 1'b0;
+            result  <= 64'b0;
+            done    <= 1'b0;
+        end else begin
+            done <= 1'b0;
+
+            if (start && !busy) begin
+                a_reg   <= {32'b0, a};
+                b_reg   <= b;
+                sum_reg <= 64'b0;
+                count   <= 5'b0;
+                busy    <= 1'b1;
+            end 
+            else if (busy) begin
+                case (b_reg[1:0])
+                    2'b00: sum_reg <= sum_reg;
+                    2'b01: sum_reg <= sum_reg + a_reg;
+                    2'b10: sum_reg <= sum_reg + (a_reg << 1);
+                    2'b11: sum_reg <= sum_reg + a_reg + (a_reg << 1);
+                endcase
+
+                a_reg <= a_reg << 2;
+                b_reg <= b_reg >> 2;
+                count <= count + 1;
+
+                if (count == 5'd15) begin
+                    busy   <= 1'b0;
+                    result <= sum_reg;
+                    done   <= 1'b1;
+                end
+            end
+        end
+    end
+endmodule
